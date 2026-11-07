@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - ci/nightly-release
     paths:
       - ".github/workflows/nightly-release.yml"
       - "Cargo.lock"
