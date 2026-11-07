@@ -1,0 +1,56 @@
+name: Nightly Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/nightly-release.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly-release:
+    name: Build and publish nightly
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build outputs
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Replace nightly release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+            $PSNativeCommandUseErrorActionPreference = $false
+          }
+
+          gh release view nightly 1>$null 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release delete nightly --cleanup-tag -y
+          } else {
+            Write-Host "No existing nightly release found."
+          }
+
+          gh release create nightly `
+            "target\release\odignored.exe#odignored.exe" `
+            --target "${{ github.sha }}" `
+            --title "Nightly" `
+            --notes "Automated nightly build from ${{ github.sha }}." `
+            --prerelease
